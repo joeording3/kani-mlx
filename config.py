@@ -32,4 +32,4 @@ MAX_TOKENS = 1200
 
 # Model paths
 MODEL_NAME = "nineninesix/kani-tts-370m-MLX"
-CODEC_MODEL_NAME = "nvidia/nemo-nano-codec-22khz-0.6kbps-12.5fps"
+CODEC_MODEL_NAME = "nineninesix/nemo-nano-codec-22khz-0.6kbps-12.5fps-MLX"

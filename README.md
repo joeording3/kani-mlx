@@ -138,7 +138,7 @@ MAX_TOKENS = 1200
 
 # Model configuration
 MODEL_NAME = "nineninesix/kani-tts-370m-MLX"
-CODEC_MODEL_NAME = "nvidia/nemo-nano-codec-22khz-0.6kbps-12.5fps"
+CODEC_MODEL_NAME = "nineninesix/nemo-nano-codec-22khz-0.6kbps-12.5fps-MLX"
 ```
 
 ## Technical Details
@@ -159,7 +159,7 @@ Time to first chunk (25 frames) on Macbook Air with M2 Silicon and 8GB RAM is ar
 ## Models
 
 - **TTS Model:** [nineninesix/kani-tts-370m-MLX](https://huggingface.co/nineninesix/kani-tts-370m-MLX)
-- **Codec Model:** [nvidia/nemo-nano-codec-22khz-0.6kbps-12.5fps](https://huggingface.co/nvidia/nemo-nano-codec-22khz-0.6kbps-12.5fps)
+- **Codec Model:** [nineninesix/nemo-nano-codec-22khz-0.6kbps-12.5fps-MLX](https://huggingface.co/nineninesix/nemo-nano-codec-22khz-0.6kbps-12.5fps-MLX)
 
 Models are automatically downloaded from Hugging Face on first run.
 
@@ -171,7 +171,7 @@ The web interface requires a modern browser with support for:
 
 ## License
 
-See [LICENSE](LICENSE) file for details.
+This project is under [Apache 2](LICENSE) licence.
 
 ## Contributing
 

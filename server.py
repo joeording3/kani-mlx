@@ -14,11 +14,6 @@ from audio import LLMAudioPlayer, StreamingAudioWriter
 from generation import TTSGenerator
 from config import CHUNK_SIZE, LOOKBACK_FRAMES, TEMPERATURE, TOP_P, MAX_TOKENS
 
-from nemo.utils.nemo_logging import Logger
-
-nemo_logger = Logger()
-nemo_logger.remove_stream_handlers()
-
 
 app = FastAPI(title="Kani TTS API", version="1.0.0")
 
