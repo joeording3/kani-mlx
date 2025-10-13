@@ -1,6 +1,6 @@
 mlx_lm
-nemo_toolkit[tts]
-transformers @ git+https://github.com/huggingface/transformers.git
+nanocodec-mlx
 fastapi
 uvicorn
+scipy
 

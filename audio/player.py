@@ -1,30 +1,21 @@
 """Audio player for LLM-generated speech tokens"""
 
-import torch
 import numpy as np
 import mlx.core as mx
-from nemo.collections.tts.models import AudioCodecModel
+from nanocodec_mlx.models.audio_codec import AudioCodecModel
 
 from config import (
     TOKENIZER_LENGTH, START_OF_TEXT, END_OF_TEXT,
     START_OF_SPEECH, END_OF_SPEECH, START_OF_HUMAN, END_OF_HUMAN,
-    START_OF_AI, END_OF_AI, PAD_TOKEN, AUDIO_TOKENS_START, CODEBOOK_SIZE
+    START_OF_AI, END_OF_AI, PAD_TOKEN, AUDIO_TOKENS_START, CODEBOOK_SIZE,
+    CODEC_MODEL_NAME
 )
 
 
 class LLMAudioPlayer:
     def __init__(self, tokenizer) -> None:
-        self.nemo_codec_model = AudioCodecModel\
-                .from_pretrained("nvidia/nemo-nano-codec-22khz-0.6kbps-12.5fps").eval()
+        self.codec_model = AudioCodecModel.from_pretrained(CODEC_MODEL_NAME)
 
-        if torch.cuda.is_available():
-            self.device = 'cuda'
-        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-            self.device = 'mps'
-        else:
-            self.device = 'cpu'
-
-        self.nemo_codec_model.to(self.device)
         self.tokenizer = tokenizer
 
         self.tokeniser_length = TOKENIZER_LENGTH
@@ -80,13 +71,10 @@ class LLMAudioPlayer:
         out_ids = out_ids.flatten()
         self.output_validation(out_ids)
         audio_codes, len_ = self.get_nano_codes(out_ids)
-        # Convert MLX arrays to PyTorch tensors for nemo model
-        with torch.inference_mode():
-            audio_codes = torch.from_numpy(np.asarray(audio_codes)).to(self.device)
-            len_ = torch.from_numpy(np.asarray(len_)).to(self.device)
 
-            reconstructed_audio, _ = self.nemo_codec_model.decode(tokens=audio_codes, tokens_len=len_)
-            output_audio = reconstructed_audio.cpu().detach().numpy().squeeze()
+        # Decode using MLX model (audio_codes and len_ are already MLX arrays)
+        reconstructed_audio, recon_len = self.codec_model.decode(audio_codes, len_)
+        output_audio = np.array(reconstructed_audio[0, 0, :int(recon_len[0])])
 
         text = self.get_text(out_ids)
         return output_audio, text
@@ -108,11 +96,8 @@ class LLMAudioPlayer:
         audio_codes = mx.expand_dims(audio_codes.T, axis=0)
         len_ = mx.array([audio_codes.shape[-1]])
 
-        with torch.inference_mode():
-            audio_codes_torch = torch.from_numpy(np.asarray(audio_codes)).to(self.device)
-            len_torch = torch.from_numpy(np.asarray(len_)).to(self.device)
-
-            reconstructed_audio, _ = self.nemo_codec_model.decode(tokens=audio_codes_torch, tokens_len=len_torch)
-            output_audio = reconstructed_audio.cpu().detach().numpy().squeeze()
+        # Decode using MLX model (audio_codes and len_ are already MLX arrays)
+        reconstructed_audio, recon_len = self.codec_model.decode(audio_codes, len_)
+        output_audio = np.array(reconstructed_audio[0, 0, :int(recon_len[0])])
 
         return output_audio

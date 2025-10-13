@@ -5,12 +5,6 @@ from audio import LLMAudioPlayer, StreamingAudioWriter
 from generation import TTSGenerator
 from config import CHUNK_SIZE, LOOKBACK_FRAMES
 
-from nemo.utils.nemo_logging import Logger
-
-nemo_logger = Logger()
-nemo_logger.remove_stream_handlers()
-
-
 def time_report(point_1, point_2, point_3):
     model_request = point_2 - point_1
     player_time = point_3 - point_2
