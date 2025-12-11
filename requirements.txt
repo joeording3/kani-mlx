@@ -1,5 +1,5 @@
-mlx_lm
-nanocodec-mlx
+mlx_lm; platform_system == "Darwin"
+nanocodec-mlx; platform_system == "Darwin"
 fastapi
 uvicorn
 scipy

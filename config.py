@@ -1,4 +1,4 @@
-"""Configuration and constants for Kani TTS"""
+"""Configuration and constants for Kani TTS."""
 
 # Tokenizer configuration
 TOKENIZER_LENGTH = 64400

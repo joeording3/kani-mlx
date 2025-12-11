@@ -1,27 +1,83 @@
-"""Text-to-speech generation logic"""
+"""Text-to-speech generation logic."""
 
+from __future__ import annotations
+
+import logging
 import time
-import mlx.core as mx
-from mlx_lm import load, stream_generate
-from mlx_lm.sample_utils import make_sampler, make_logits_processors
+from typing import Any, Protocol
+
+from audio.tokenizer_types import TokenizerLike
+
+try:
+    import mlx.core as mx
+except ModuleNotFoundError:  # pragma: no cover - Linux CI image
+    mx = None
+try:
+    from mlx_lm import load, stream_generate
+    from mlx_lm.sample_utils import make_logits_processors, make_sampler
+except ImportError:  # pragma: no cover - optional Darwin dependency
+    load = None
+    stream_generate = None
+    make_logits_processors = None
+    make_sampler = None
 
 from config import (
-    MODEL_NAME, START_OF_HUMAN, END_OF_TEXT, END_OF_HUMAN, END_OF_AI,
-    TEMPERATURE, TOP_P, REPETITION_PENALTY, REPETITION_CONTEXT_SIZE, MAX_TOKENS
+    END_OF_AI,
+    END_OF_HUMAN,
+    END_OF_TEXT,
+    MAX_TOKENS,
+    MODEL_NAME,
+    REPETITION_CONTEXT_SIZE,
+    REPETITION_PENALTY,
+    START_OF_HUMAN,
+    TEMPERATURE,
+    TOP_P,
+)
+
+logger = logging.getLogger(__name__)
+
+MLX_RUNTIME_AVAILABLE = all(
+    [
+        mx is not None,
+        load is not None,
+        stream_generate is not None,
+        make_logits_processors is not None,
+        make_sampler is not None,
+    ]
 )
 
 
+class AudioTokenSink(Protocol):
+    """Protocol describing minimal interface for audio token consumers."""
+
+    def add_token(self, token_id: int) -> None:
+        """Enqueue a token for downstream audio decoding."""
+        ...
+
+
+class MLXUnavailableError(RuntimeError):
+    """Raised when the MLX backend cannot be initialized."""
+
+    def __init__(self) -> None:
+        super().__init__("MLX runtime unavailable")
+
+
 class TTSGenerator:
-    def __init__(self):
-        self.model, self.tokenizer = load(MODEL_NAME)
+    """High-level orchestrator for Kani TTS generation."""
+
+    def __init__(self) -> None:
+        if not MLX_RUNTIME_AVAILABLE:
+            raise MLXUnavailableError()
+        self.model, tokenizer = load(MODEL_NAME)
+        self.tokenizer: TokenizerLike = tokenizer
         self.sampler = make_sampler(temp=TEMPERATURE, top_p=TOP_P)
         self.logits_processors = make_logits_processors(
             repetition_penalty=REPETITION_PENALTY,
-            repetition_context_size=REPETITION_CONTEXT_SIZE
+            repetition_context_size=REPETITION_CONTEXT_SIZE,
         )
 
-    def prepare_input(self, prompt):
-        """Build custom input_ids with special tokens"""
+    def prepare_input(self, prompt: str) -> list[int]:
+        """Build custom input_ids with special tokens."""
         input_ids = self.tokenizer.encode(prompt, add_special_tokens=False)
         input_ids = mx.array([input_ids])
 
@@ -32,8 +88,13 @@ class TTSGenerator:
         # Flatten to 1D list for generate function
         return modified_input_ids[0].tolist()
 
-    def generate(self, prompt, audio_writer, max_tokens=MAX_TOKENS):
-        """Generate speech tokens from text prompt"""
+    def generate(
+        self,
+        prompt: str,
+        audio_writer: AudioTokenSink,
+        max_tokens: int = MAX_TOKENS,
+    ) -> dict[str, Any]:
+        """Generate speech tokens from a text prompt."""
         modified_input_ids = self.prepare_input(prompt)
 
         point_1 = time.time()
@@ -61,16 +122,18 @@ class TTSGenerator:
 
                 # Stop after END_OF_AI to avoid generating multiple turns
                 if token_id == END_OF_AI:
-                    print(f"[LLM] END_OF_AI detected, stopping generation")
+                    logger.info("[LLM] END_OF_AI detected, stopping generation")
                     break
             else:
                 # Fallback to encoding (shouldn't happen with proper stream_generate)
-                print(f"[LLM] Warning: No token ID in response, using text encoding")
+                logger.warning("[LLM] Warning: No token ID in response, using text encoding")
 
         point_2 = time.time()
 
-        print(f"\n[MAIN] Generation complete. Total tokens: {len(all_token_ids)}")
-        print(f"[MAIN] Generated text length: {len(generated_text)} chars")
+        logger.debug(
+            "[MAIN] Generation complete. Total tokens: %d", len(all_token_ids)
+        )
+        logger.debug("[MAIN] Generated text length: %d chars", len(generated_text))
 
         return {
             'generated_text': generated_text,

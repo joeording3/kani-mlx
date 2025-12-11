@@ -1,4 +1,4 @@
-"""Audio processing modules for Kani TTS"""
+"""Audio processing modules for Kani TTS."""
 
 from .player import LLMAudioPlayer
 from .streaming import StreamingAudioWriter

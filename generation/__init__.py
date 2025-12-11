@@ -1,4 +1,4 @@
-"""Text-to-speech generation modules"""
+"""Text-to-speech generation modules."""
 
 from .generator import TTSGenerator
 
