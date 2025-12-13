@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 import logging
+from typing import Any
 
 import numpy as np
 
@@ -12,7 +13,9 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - Linux CI image
     mx = None
 try:
-    from nanocodec_mlx.models.audio_codec import AudioCodecModel
+    from nanocodec_mlx.models.audio_codec import (
+        AudioCodecModel,  # pyright: ignore[reportMissingImports]
+    )
 except ImportError:  # pragma: no cover - nanocodec-mlx is macOS-only
     AudioCodecModel = None
 
@@ -34,6 +37,8 @@ from config import (
 
 from .tokenizer_types import TokenizerLike
 
+MXArray = Any
+
 logger = logging.getLogger(__name__)
 
 
@@ -42,9 +47,9 @@ class _PlaceholderAudioCodecModel:
 
     def decode(
         self,
-        audio_codes: mx.ndarray,
-        lengths: mx.ndarray | None,
-    ) -> tuple[mx.ndarray, mx.ndarray]:
+        audio_codes: MXArray,
+        lengths: MXArray | None,
+    ) -> tuple[MXArray, MXArray]:
         try:
             num_frames = max(1, int(audio_codes.shape[-1]))
         except Exception:
@@ -112,7 +117,7 @@ class LLMAudioPlayer:
         self.audio_tokens_start = AUDIO_TOKENS_START
         self.codebook_size = CODEBOOK_SIZE
 
-    def _build_codec_model(self) -> AudioCodecModel | _PlaceholderAudioCodecModel:
+    def _build_codec_model(self) -> _PlaceholderAudioCodecModel | object:
         if AudioCodecModel is None:
             logger.warning(
                 "nanocodec-mlx is unavailable; Kani MLX audio will be silent",
@@ -121,14 +126,14 @@ class LLMAudioPlayer:
 
         return AudioCodecModel.from_pretrained(CODEC_MODEL_NAME)
 
-    def output_validation(self, out_ids: mx.ndarray) -> None:
+    def output_validation(self, out_ids: MXArray) -> None:
         """Ensure the speech token markers are present before decoding."""
         start_of_speech_flag = self.start_of_speech in out_ids
         end_of_speech_flag = self.end_of_speech in out_ids
         if not (start_of_speech_flag and end_of_speech_flag):
             raise MissingSpeechTokensError()
 
-    def get_nano_codes(self, out_ids: mx.ndarray) -> tuple[mx.ndarray, mx.ndarray]:
+    def get_nano_codes(self, out_ids: MXArray) -> tuple[MXArray, MXArray]:
         """Extract the encoded audio frames and length for the codec model."""
         start_a_idx = (out_ids == self.start_of_speech).tolist().index(True)
         end_a_idx   = (out_ids == self.end_of_speech).tolist().index(True)
@@ -149,7 +154,7 @@ class LLMAudioPlayer:
         len_ = mx.array([audio_codes.shape[-1]])
         return audio_codes, len_
 
-    def get_text(self, out_ids: mx.ndarray) -> str | None:
+    def get_text(self, out_ids: MXArray) -> str | None:
         """Decode the text span from the token sequence."""
         try:
             start_t_idx = (out_ids == self.start_of_text).tolist().index(True)
@@ -160,7 +165,7 @@ class LLMAudioPlayer:
         txt_tokens = out_ids[start_t_idx : end_t_idx+1]
         return self.tokenizer.decode(txt_tokens, skip_special_tokens=True)
 
-    def get_waveform(self, out_ids: mx.ndarray) -> tuple[np.ndarray, str | None]:
+    def get_waveform(self, out_ids: MXArray) -> tuple[np.ndarray, str | None]:
         """Return the decoded waveform and optional text for a token batch."""
         out_ids = out_ids.flatten()
         self.output_validation(out_ids)
