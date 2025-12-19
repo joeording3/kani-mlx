@@ -57,17 +57,17 @@ class TTSRequest(BaseModel):
 @app.on_event("startup")
 async def startup_event() -> None:
     """Initialize models on startup."""
-    logger.info("🚀 Initializing TTS models...")
+    logger.info("Initializing TTS models...")
     try:
         generator = TTSGenerator()
         player = LLMAudioPlayer(generator.tokenizer)
     except Exception as exc:
-        logger.warning("⚠️ Kani MLX initialization skipped: %s", exc)
+        logger.warning("Kani MLX initialization skipped: %s", exc)
         return
 
     app.state.generator = generator
     app.state.player = player
-    logger.info("✅ TTS models initialized successfully!")
+    logger.info("TTS models initialized successfully!")
 
 
 @app.get("/health")
@@ -213,5 +213,5 @@ async def root() -> dict[str, object]:
 
 if __name__ == "__main__":
     import uvicorn
-    logger.info("🎤 Starting Kani TTS Server...")
+    logger.info("Starting Kani TTS Server...")
     uvicorn.run(app, host="0.0.0.0", port=8000)
