@@ -23,6 +23,7 @@ from config import CHUNK_SIZE, LOOKBACK_FRAMES, MAX_TOKENS, TEMPERATURE, TOP_P
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Kani TTS API", version="1.0.0")
+app.state.init_error = None
 
 # Add CORS middleware to allow client.html to connect
 app.add_middleware(
@@ -38,7 +39,8 @@ def require_models() -> tuple[TTSGenerator, LLMAudioPlayer]:
     generator = getattr(app.state, "generator", None)
     player = getattr(app.state, "player", None)
     if not generator or not player:
-        raise HTTPException(status_code=503, detail="TTS models not initialized")
+        detail = getattr(app.state, "init_error", None) or "TTS models not initialized"
+        raise HTTPException(status_code=503, detail=detail)
 
     return generator, player
 
@@ -62,11 +64,13 @@ async def startup_event() -> None:
         generator = TTSGenerator()
         player = LLMAudioPlayer(generator.tokenizer)
     except Exception as exc:
+        app.state.init_error = f"MLX runtime unavailable: {exc}"
         logger.warning("Kani MLX initialization skipped: %s", exc)
         return
 
     app.state.generator = generator
     app.state.player = player
+    app.state.init_error = None
     logger.info("TTS models initialized successfully!")
 
 
@@ -75,9 +79,11 @@ async def health_check() -> dict[str, bool]:
     """Check if the server and TTS models are ready."""
     generator = getattr(app.state, "generator", None)
     player = getattr(app.state, "player", None)
+    init_error = getattr(app.state, "init_error", None)
     return {
         "status": True,
         "tts_initialized": generator is not None and player is not None,
+        "error": init_error,
     }
 
 
