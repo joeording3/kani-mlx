@@ -56,6 +56,12 @@ class TTSRequest(BaseModel):
     lookback_frames: int | None = LOOKBACK_FRAMES
 
 
+class HealthResponse(BaseModel):
+    status: bool
+    tts_initialized: bool
+    error: str | None = None
+
+
 @app.on_event("startup")
 async def startup_event() -> None:
     """Initialize models on startup."""
@@ -75,16 +81,16 @@ async def startup_event() -> None:
 
 
 @app.get("/health")
-async def health_check() -> dict[str, bool]:
+async def health_check() -> HealthResponse:
     """Check if the server and TTS models are ready."""
     generator = getattr(app.state, "generator", None)
     player = getattr(app.state, "player", None)
     init_error = getattr(app.state, "init_error", None)
-    return {
-        "status": True,
-        "tts_initialized": generator is not None and player is not None,
-        "error": init_error,
-    }
+    return HealthResponse(
+        status=True,
+        tts_initialized=generator is not None and player is not None,
+        error=init_error,
+    )
 
 
 @app.post("/tts")
